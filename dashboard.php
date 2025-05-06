@@ -30,8 +30,11 @@ try {
     <style>
         body { font-family: sans-serif; margin: 0; padding:0; background-color: #f9f9f9; }
         .navbar { background-color: #333; padding: 10px 20px; color: white; display: flex; justify-content: space-between; align-items: center; }
-        .navbar a { color: white; text-decoration: none; margin-left: 15px; }
-        .navbar a:hover { text-decoration: underline; }
+        .navbar .nav-links a, .navbar .user-info a { color: white; text-decoration: none; margin-left: 15px; } /* Aplicar a todos los 'a' dentro de .navbar */
+        .navbar .nav-links a:hover, .navbar .user-info a:hover { text-decoration: underline; }
+        .navbar .user-info { display: flex; align-items: center; }
+        .navbar .user-info span { margin-right: 15px; } /* Espacio para el nombre de usuario */
+
         .container { padding: 20px; max-width: 900px; margin: 20px auto; background-color: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
         .header h1 { margin: 0; }
@@ -48,16 +51,18 @@ try {
         .delete-link { color: #dc3545; }
         .no-posts { text-align: center; color: #777; padding: 20px; }
         .success-message { background-color: #d4edda; color: #155724; padding: 10px; border: 1px solid #c3e6cb; border-radius: 4px; margin-bottom: 15px; text-align: center; }
-
     </style>
 </head>
 <body>
     <div class="navbar">
-        <div>
-            <a href="index.php">Ver Todos los Posts</a> <!-- Enlace a la página principal del blog -->
-            Bienvenido, <?php echo htmlspecialchars($username_display); ?>!
+        <div class="nav-links">
+            <a href="index.php"><strong>Blog Principal</strong></a> <!-- Enlace más destacado -->
+            <!-- Podrías añadir otros enlaces aquí si los necesitas -->
         </div>
-        <a href="logout.php">Cerrar Sesión</a>
+        <div class="user-info">
+            <span>Bienvenido, <?php echo htmlspecialchars($username_display); ?>!</span>
+            <a href="logout.php">Cerrar Sesión</a>
+        </div>
     </div>
 
     <div class="container">
@@ -85,7 +90,11 @@ try {
                     </div>
                 <?php endforeach; ?>
             <?php else: ?>
-                <p class="no-posts">Aún no has creado ningún post. ¡<a href="create_post.php">Crea uno ahora</a>!</p>
+                <p class="no-posts">
+                    Aún no has creado ningún post.
+                    <!-- Puedes añadir el enlace aquí también si quieres más redundancia -->
+                    ¡<a href="create_post.php">Crea uno ahora</a> o <a href="index.php">explora el blog principal</a>!
+                </p>
             <?php endif; ?>
         </div>
     </div>
