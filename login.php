@@ -8,22 +8,21 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $errors = [];
-$username_input = ''; // Cambiado de 'identifier' para claridad
+$username_input = '';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username_input = trim($_POST['username']); // Campo ahora es 'username'
+    $username_input = trim($_POST['username']);
     $password = $_POST['password'];
 
     if (empty($username_input)) {
-        $errors[] = "El nombre de usuario es obligatorio.";
+        $errors[] = "Der Benutzername ist erforderlich."; // "El nombre de usuario es obligatorio."
     }
     if (empty($password)) {
-        $errors[] = "La contraseña es obligatoria.";
+        $errors[] = "Das Passwort ist erforderlich."; // "La contraseña es obligatoria."
     }
 
     if (empty($errors)) {
         try {
-            // Buscar al usuario solo por username
             $stmt = $pdo->prepare("SELECT id, username, password_hash FROM users WHERE username = :username");
             $stmt->execute(['username' => $username_input]);
             $user = $stmt->fetch();
@@ -31,26 +30,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($user && password_verify($password, $user['password_hash'])) {
                 $_SESSION['user_id'] = $user['id'];
                 $_SESSION['username'] = $user['username'];
-                header("Location: dashboard.php");
+
+                // Si venías de una redirección (ej. intentar comentar sin estar logueado)
+                if (isset($_SESSION['redirect_to'])) {
+                    $redirect_url = $_SESSION['redirect_to'];
+                    unset($_SESSION['redirect_to']);
+                    header("Location: " . $redirect_url);
+                } else {
+                    header("Location: dashboard.php");
+                }
                 exit;
             } else {
-                $errors[] = "Nombre de usuario o contraseña incorrectos.";
+                $errors[] = "Benutzername oder Passwort falsch."; // "Nombre de usuario o contraseña incorrectos."
             }
         } catch (PDOException $e) {
-            error_log("Error en login: " . $e->getMessage());
-            $errors[] = "Ocurrió un error. Por favor, inténtalo de nuevo.";
+            error_log("Fehler beim Login: " . $e->getMessage());
+            $errors[] = "Ein Fehler ist aufgetreten. Bitte versuche es erneut."; // "Ocurrió un error. Por favor, inténtalo de nuevo."
         }
     }
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="es">
+<html lang="de"> <!-- Cambiado a lang="de" -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión</title>
-    <style> /* Mismos estilos */
+    <title>Anmelden</title> <!-- "Iniciar Sesión" -->
+    <style> /* Dieselben Stile */
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f4f4; margin: 0; }
         .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 300px; }
         h2 { text-align: center; color: #333; }
@@ -68,13 +75,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body>
     <div class="container">
-        <h2>Iniciar Sesión</h2>
+        <h2>Anmelden</h2> <!-- "Iniciar Sesión" -->
 
         <?php if (isset($_SESSION['success_message'])): ?>
             <div class="success">
                 <?php echo htmlspecialchars($_SESSION['success_message']); unset($_SESSION['success_message']); ?>
             </div>
         <?php endif; ?>
+        
+        <?php if (isset($_SESSION['error_message'])): /* Para mensajes de error de otras páginas, ej. "Debes iniciar sesión" */ ?>
+            <div class="errors"><ul><li><?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?></li></ul></div>
+        <?php endif; ?>
+
 
         <?php if (!empty($errors)): ?>
             <div class="errors">
@@ -86,18 +98,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             </div>
         <?php endif; ?>
 
-        <form action="login.php" method="post">
+        <form action="login.php<?php echo isset($_GET['redirect_to']) ? '?redirect_to=' . urlencode($_GET['redirect_to']) : ''; ?>" method="post">
             <div class="form-group">
-                <label for="username">Nombre de Usuario:</label> <!-- Cambiado de 'identifier' -->
-                <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($username_input); ?>" required> <!-- Cambiado de 'identifier' -->
+                <label for="username">Benutzername:</label>
+                <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($username_input); ?>" autocomplete="username" required> <!-- Añadido autocomplete -->
             </div>
             <div class="form-group">
-                <label for="password">Contraseña:</label>
-                <input type="password" id="password" name="password" required>
+                <label for="password">Passwort:</label>
+                <input type="password" id="password" name="password" autocomplete="current-password" required> <!-- Añadido autocomplete -->
             </div>
-            <button type="submit">Iniciar Sesión</button>
+            <button type="submit">Anmelden</button> <!-- "Iniciar Sesión" -->
             <div class="form-footer">
-                <p>¿No tienes una cuenta? <a href="register.php">Regístrate aquí</a></p>
+                <p>Noch kein Konto? <a href="register.php">Hier registrieren</a></p> <!-- "¿No tienes una cuenta? Regístrate aquí" -->
             </div>
         </form>
     </div>

@@ -8,78 +8,80 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 if (!isset($_GET['id']) || !isset($_GET['post_id'])) {
-    header("Location: index.php");
+    // Wenn post_id fehlt, versuchen, zum Dashboard oder Index umzuleiten
+    $_SESSION['error_message'] = "Unvollständige Informationen zum Bearbeiten des Kommentars."; // "Información incompleta para editar comentario."
+    $fallback_redirect = isset($_SESSION['user_id']) ? "dashboard.php" : "index.php";
+    header("Location: " . $fallback_redirect);
     exit;
 }
 
 $comment_id = (int)$_GET['id'];
-$post_id_redirect = (int)$_GET['post_id']; // Para redirigir de vuelta al post
+$post_id_redirect = (int)$_GET['post_id'];
 $user_id_session = $_SESSION['user_id'];
 $comment = null;
 $content = '';
 $errors = [];
 
-// 1. Obtener el comentario para editar
+// 1. Kommentar zum Bearbeiten abrufen
 try {
     $stmt = $pdo->prepare("SELECT * FROM comments WHERE id = :id");
     $stmt->execute(['id' => $comment_id]);
     $comment = $stmt->fetch();
 
     if (!$comment) {
-        $_SESSION['error_message'] = "Comentario no encontrado.";
+        $_SESSION['error_message'] = "Kommentar nicht gefunden."; // "Comentario no encontrado."
         header("Location: view_post.php?id=" . $post_id_redirect);
         exit;
     }
 
     if ($comment['user_id'] != $user_id_session) {
-        $_SESSION['error_message'] = "No tienes permiso para editar este comentario.";
+        $_SESSION['error_message'] = "Du hast keine Berechtigung, diesen Kommentar zu bearbeiten."; // "No tienes permiso para editar este comentario."
         header("Location: view_post.php?id=" . $post_id_redirect);
         exit;
     }
     $content = $comment['content'];
 
 } catch (PDOException $e) {
-    error_log("Error al obtener comentario para editar: " . $e->getMessage());
-    $_SESSION['error_message'] = "Error al cargar comentario.";
+    error_log("Fehler beim Abrufen des Kommentars zum Bearbeiten: " . $e->getMessage());
+    $_SESSION['error_message'] = "Fehler beim Laden des Kommentars."; // "Error al cargar comentario."
     header("Location: view_post.php?id=" . $post_id_redirect);
     exit;
 }
 
-// 2. Procesar la actualización
+// 2. Aktualisierung verarbeiten
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $updated_content = trim($_POST['content']);
     if (empty($updated_content)) {
-        $errors[] = "El contenido del comentario no puede estar vacío.";
+        $errors[] = "Der Kommentarinhalt darf nicht leer sein."; // "El contenido del comentario no puede estar vacío."
     } else {
-        $content = $updated_content; // Repoblar con el nuevo contenido
+        $content = $updated_content; 
     }
 
     if (empty($errors)) {
         try {
-            // Si tienes el trigger para comments.updated_at, se actualiza solo
             $stmt_update = $pdo->prepare("UPDATE comments SET content = :content WHERE id = :id AND user_id = :user_id");
             $stmt_update->execute([
                 'content' => $updated_content,
                 'id' => $comment_id,
                 'user_id' => $user_id_session
             ]);
-            $_SESSION['success_message'] = "Comentario actualizado.";
-            header("Location: view_post.php?id=" . $post_id_redirect . "#comment-" . $comment_id); // Ir al comentario editado
+            $_SESSION['success_message'] = "Kommentar aktualisiert."; // "Comentario actualizado."
+            header("Location: view_post.php?id=" . $post_id_redirect . "#comment-" . $comment_id);
             exit;
         } catch (PDOException $e) {
-            error_log("Error al actualizar comentario: " . $e->getMessage());
-            $errors[] = "Error al guardar los cambios.";
+            error_log("Fehler beim Aktualisieren des Kommentars: " . $e->getMessage());
+            $errors[] = "Fehler beim Speichern der Änderungen."; // "Error al guardar los cambios."
         }
     }
 }
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="de"> <!-- Geändert -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Comentario</title>
-    <style> /* Similar a create_post.php */
+    <title>Kommentar bearbeiten</title> <!-- "Editar Comentario" -->
+    <style> /* Stile bleiben gleich */
         body { font-family: sans-serif; display: flex; justify-content: center; padding-top: 20px; background-color: #f4f4f4; margin: 0; }
         .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 600px; }
         h2 { text-align: center; color: #333; }
@@ -95,19 +97,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body>
     <div class="container">
-        <h2>Editar Comentario</h2>
+        <h2>Kommentar bearbeiten</h2> <!-- "Editar Comentario" -->
         <?php if (!empty($errors)): ?>
             <div class="errors"><ul><?php foreach ($errors as $error) echo "<li>".htmlspecialchars($error)."</li>"; ?></ul></div>
         <?php endif; ?>
 
         <form action="edit_comment.php?id=<?php echo $comment_id; ?>&post_id=<?php echo $post_id_redirect; ?>" method="post">
             <div class="form-group">
-                <label for="content">Tu comentario:</label>
+                <label for="content">Dein Kommentar:</label> <!-- "Tu comentario:" -->
                 <textarea id="content" name="content" required><?php echo htmlspecialchars($content); ?></textarea>
             </div>
-            <button type="submit">Actualizar Comentario</button>
+            <button type="submit">Kommentar aktualisieren</button> <!-- "Actualizar Comentario" -->
         </form>
-        <a href="view_post.php?id=<?php echo $post_id_redirect; ?>#comment-<?php echo $comment_id; ?>" class="back-link">Cancelar</a>
+        <a href="view_post.php?id=<?php echo $post_id_redirect; ?>#comment-<?php echo $comment_id; ?>" class="back-link">Abbrechen</a> <!-- "Cancelar" -->
     </div>
 </body>
 </html>

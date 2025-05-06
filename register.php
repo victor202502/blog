@@ -4,79 +4,60 @@ require_once 'db_connect.php';
 
 $errors = [];
 $username = '';
-// $email = ''; // Ya no es necesario para el input
+// $email = ''; // Nicht mehr für die Eingabe benötigt
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = trim($_POST['username']);
     $password = $_POST['password'];
-    // $password_confirm = $_POST['password_confirm']; // Ya no es necesario
-    // $email = trim($_POST['email']); // Ya no es necesario
 
-    // Validaciones básicas
+    // Grundlegende Validierungen
     if (empty($username)) {
-        $errors[] = "El nombre de usuario es obligatorio.";
+        $errors[] = "Der Benutzername ist erforderlich."; // "El nombre de usuario es obligatorio."
     }
-    // Quitar validaciones de email
     if (empty($password)) {
-        $errors[] = "La contraseña es obligatoria.";
+        $errors[] = "Das Passwort ist erforderlich."; // "La contraseña es obligatoria."
     }
-    // Quitar validación de confirmación de contraseña
-    // if ($password !== $password_confirm) {
-    //     $errors[] = "Las contraseñas no coinciden.";
-    // }
 
-    // Si no hay errores de validación inicial, verificar si el usuario ya existe
+    // Wenn keine anfänglichen Validierungsfehler vorliegen, prüfen, ob der Benutzer bereits existiert
     if (empty($errors)) {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE username = :username");
         $stmt->execute(['username' => $username]);
         if ($stmt->fetch()) {
-            $errors[] = "El nombre de usuario ya está en uso.";
+            $errors[] = "Der Benutzername ist bereits vergeben."; // "El nombre de usuario ya está en uso."
         }
-
-        // Quitar verificación de existencia de email
     }
 
-    // Si no hay errores hasta ahora, proceder a registrar
+    // Wenn bisher keine Fehler aufgetreten sind, mit der Registrierung fortfahren
     if (empty($errors)) {
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
         try {
-            // Ajustar la consulta INSERT si eliminaste la columna email de la tabla
-            // Si la columna email existe pero es opcional (NULL), puedes omitirla del INSERT o pasar NULL
             $stmt = $pdo->prepare("INSERT INTO users (username, password_hash) VALUES (:username, :password_hash)");
             $params = [
                 'username' => $username,
                 'password_hash' => $password_hash
             ];
-            // Si mantuviste la columna email como opcional y quieres guardar un email (quizás vacío o nulo):
-            // $stmt = $pdo->prepare("INSERT INTO users (username, email, password_hash) VALUES (:username, :email, :password_hash)");
-            // $params = [
-            //     'username' => $username,
-            //     'email' => null, // o un valor por defecto si lo quieres
-            //     'password_hash' => $password_hash
-            // ];
             $stmt->execute($params);
 
-
-            $_SESSION['success_message'] = "¡Registro exitoso! Ahora puedes iniciar sesión.";
+            $_SESSION['success_message'] = "Registrierung erfolgreich! Du kannst dich jetzt einloggen."; // "¡Registro exitoso! Ahora puedes iniciar sesión."
             header("Location: login.php");
             exit;
 
         } catch (PDOException $e) {
-            error_log("Error en registro: " . $e->getMessage());
-            $errors[] = "Ocurrió un error durante el registro. Por favor, inténtalo de nuevo.";
+            error_log("Fehler bei der Registrierung: " . $e->getMessage());
+            $errors[] = "Bei der Registrierung ist ein Fehler aufgetreten. Bitte versuche es erneut."; // "Ocurrió un error durante el registro. Por favor, inténtalo de nuevo."
         }
     }
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="es">
+<html lang="de"> <!-- Cambiado a lang="de" -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Usuario</title>
-    <style> /* Mismos estilos que antes */
+    <title>Benutzerregistrierung</title> <!-- "Registro de Usuario" -->
+    <style> /* Dieselben Stile wie zuvor */
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f4f4f4; margin: 0; }
         .container { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 300px; }
         h2 { text-align: center; color: #333; }
@@ -94,7 +75,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </head>
 <body>
     <div class="container">
-        <h2>Registro Simplificado</h2>
+        <h2>Vereinfachte Registrierung</h2> <!-- "Registro Simplificado" -->
 
         <?php if (!empty($errors)): ?>
             <div class="errors">
@@ -108,18 +89,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <form action="register.php" method="post">
             <div class="form-group">
-                <label for="username">Nombre de Usuario:</label>
+                <label for="username">Benutzername:</label> <!-- "Nombre de Usuario:" -->
                 <input type="text" id="username" name="username" value="<?php echo htmlspecialchars($username); ?>" required>
             </div>
-            <!-- Campo de Email eliminado -->
             <div class="form-group">
-                <label for="password">Contraseña:</label>
-                <input type="password" id="password" name="password" required>
+                <label for="password">Passwort:</label> <!-- "Contraseña:" -->
+                <input type="password" id="password" name="password" autocomplete="new-password" required> <!-- Añadido autocomplete -->
             </div>
-            <!-- Campo de Confirmar Contraseña eliminado -->
-            <button type="submit">Registrarse</button>
+            <button type="submit">Registrieren</button> <!-- "Registrarse" -->
             <div class="form-footer">
-                <p>¿Ya tienes una cuenta? <a href="login.php">Inicia sesión aquí</a></p>
+                <p>Hast du bereits ein Konto? <a href="login.php">Hier einloggen</a></p> <!-- "¿Ya tienes una cuenta? Inicia sesión aquí" -->
             </div>
         </form>
     </div>
