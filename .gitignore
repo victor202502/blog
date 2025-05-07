@@ -1,0 +1,24 @@
+# Ignorar la carpeta vendor generada por Composer
+/vendor/
+
+# Ignorar el archivo .env que contiene variables de entorno locales y secretos
+.env
+
+# (Opcional) Archivos de configuración específicos del editor o IDE
+.vscode/
+.idea/
+
+# (Opcional) Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+
+# (Opcional) Logs de PHP u otros logs de desarrollo local
+*.log
+php_errors.log
+
+# (Opcional) Si subes imágenes directamente a una carpeta en el proyecto (no recomendado para producción a largo plazo)
+# y no quieres versionarlas, podrías ignorar esa carpeta de subidas.
+# Pero si las imágenes son parte del contenido que quieres que se despliegue
+# y no son generadas por el usuario en producción, podrías querer versionarlas.
+# Por ahora, lo dejaremos comentado:
+# /uploads/
