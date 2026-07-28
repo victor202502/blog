@@ -22,58 +22,154 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Einfacher Blog</title> <!-- "Blog Sencillo" -->
-    <style>
-        /* Dieselben Stile wie im Dashboard oder neue erstellen */
-        body { font-family: sans-serif; margin: 0; padding:0; background-color: #f9f9f9; }
-        .navbar { background-color: #333; padding: 10px 20px; color: white; display: flex; justify-content: space-between; align-items: center; }
-        .navbar .nav-brand a, .navbar .nav-auth a { color: white; text-decoration: none; margin-left: 15px; } /* Angepasst für bessere Struktur */
-        .navbar .nav-brand a:hover, .navbar .nav-auth a:hover { text-decoration: underline; }
-        .container { padding: 20px; max-width: 900px; margin: 20px auto; }
-        h1.page-title { text-align: center; margin-bottom: 30px; color: #333; }
-        .post-item { background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .post-item h2 { margin-top: 0; }
-        .post-item h2 a { text-decoration: none; color: #007bff; }
-        .post-item h2 a:hover { text-decoration: underline; }
-        .post-meta { font-size: 0.9em; color: #777; margin-bottom: 10px; }
-        .post-excerpt { color: #555; line-height: 1.6; }
-        .read-more { display: inline-block; margin-top: 10px; color: #007bff; text-decoration: none; font-weight: bold; }
-        .read-more:hover { text-decoration: underline; }
-        .no-posts { text-align: center; color: #777; padding: 20px; font-size: 1.2em; }
-    </style>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234F46E5'/%3E%3Ctext x='50' y='68' font-size='56' font-family='sans-serif' font-weight='700' fill='white' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="navbar">
-        <div class="nav-brand"> <!-- Für den Markennamen/Logo -->
-            <a href="index.php"><strong>Mein Blog</strong></a> <!-- "Mi Blog" -->
-        </div>
-        <div class="nav-auth"> <!-- Für Login/Logout Links -->
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <a href="dashboard.php">Meine Posts</a> <!-- "Mis Posts" -->
-                <a href="logout.php">Abmelden (<?php echo htmlspecialchars($_SESSION['username']); ?>)</a> <!-- "Cerrar Sesión (...)" -->
-            <?php else: ?>
-                <a href="login.php">Anmelden</a> <!-- "Iniciar Sesión" -->
-                <a href="register.php">Registrieren</a> <!-- "Registrarse" -->
-            <?php endif; ?>
-        </div>
-    </div>
 
-    <div class="container">
-        <h1 class="page-title">Neueste Posts</h1> <!-- "Últimos Posts" -->
-        <?php if (count($posts) > 0): ?>
-            <?php foreach ($posts as $post): ?>
-                <div class="post-item">
-                    <h2><a href="view_post.php?id=<?php echo $post['id']; ?>"><?php echo htmlspecialchars($post['title']); ?></a></h2>
-                    <p class="post-meta">
-                        Von: <?php echo htmlspecialchars($post['author_username']); ?> | <!-- "Por:" -->
-                        Veröffentlicht am: <?php echo date('d.m.Y', strtotime($post['created_at'])); ?> <!-- "Publicado el:" y formato de fecha alemán -->
-                    </p>
-                    <p class="post-excerpt"><?php echo nl2br(htmlspecialchars($post['excerpt'])); ?>...</p>
-                    <a href="view_post.php?id=<?php echo $post['id']; ?>" class="read-more">Weiterlesen →</a> <!-- "Leer más →" -->
+    <header class="navbar">
+        <div class="container navbar__inner">
+            <a href="index.php" class="navbar__brand">
+                <span class="navbar__mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </span>
+                <span>Mein Blog</span>
+            </a>
+
+            <nav class="navbar__nav" data-nav-menu>
+                <a href="index.php" class="navbar__link">Start</a>
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <a href="dashboard.php" class="navbar__link">Meine Posts</a>
+                    <a href="create_post.php" class="btn btn--primary btn--sm">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                        Neuer Artikel
+                    </a>
+                    <div class="navbar__user">
+                        <span class="avatar avatar--sm" aria-hidden="true">
+                            <?php echo htmlspecialchars(strtoupper(mb_substr($_SESSION['username'], 0, 1))); ?>
+                            <img src="images/avatars/<?php echo rawurlencode(strtolower($_SESSION['username'])); ?>.jpg" alt="" class="avatar__photo" onerror="this.style.display='none'">
+                        </span>
+                        <span class="navbar__username"><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+                        <a href="logout.php" class="navbar__icon-link" aria-label="Abmelden" title="Abmelden">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <a href="login.php" class="navbar__link">Anmelden</a>
+                    <a href="register.php" class="btn btn--primary btn--sm">Registrieren</a>
+                <?php endif; ?>
+            </nav>
+
+            <button class="navbar__toggle" data-nav-toggle aria-label="Menü öffnen" aria-expanded="false">
+                <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+                <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container">
+                <span class="hero__eyebrow fade-in">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="m12 3-1.9 4.6L5 9l4.1 3.4L7.8 17 12 14.4 16.2 17l-1.3-4.6L19 9l-5.1-1.4z"/></svg>
+                    Ideen &amp; Geschichten
+                </span>
+                <h1 class="hero__title slide-up">Willkommen bei Mein Blog</h1>
+                <p class="hero__subtitle slide-up slide-up--1">Ein ruhiger Ort für ehrliche Artikel, Notizen und neue Perspektiven — geschrieben von unserer Community.</p>
+                <div class="hero__actions slide-up slide-up--2">
+                    <a href="#posts" class="btn btn--primary btn--lg">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Artikel entdecken
+                    </a>
+                    <?php if (isset($_SESSION['user_id'])): ?>
+                        <a href="create_post.php" class="btn btn--secondary btn--lg">Neuen Artikel schreiben</a>
+                    <?php else: ?>
+                        <a href="register.php" class="btn btn--secondary btn--lg">Jetzt registrieren</a>
+                    <?php endif; ?>
                 </div>
-            <?php endforeach; ?>
-        <?php else: ?>
-            <p class="no-posts">Noch keine Posts zum Anzeigen vorhanden.</p> <!-- "No hay posts para mostrar todavía." -->
-        <?php endif; ?>
-    </div>
+            </div>
+        </section>
+
+        <section class="section section--tight" id="posts">
+            <div class="container">
+                <?php if (count($posts) > 0): ?>
+                    <div class="post-grid">
+                        <?php foreach ($posts as $post): ?>
+                            <?php
+                                $monogram = strtoupper(mb_substr($post['title'], 0, 1));
+                                $wordCount = str_word_count(strip_tags($post['excerpt']));
+                                $readMinutes = max(1, (int) ceil($wordCount / 200));
+                                $authorInitial = strtoupper(mb_substr($post['author_username'], 0, 1));
+                                // Themenbilder im Wechsel (rein visuell, keine neue Datenbankabfrage)
+                                $topic_images = [
+                                    'images/topic-ia.png',
+                                    'images/topic-programacion.png',
+                                    'images/topic-ciberseguridad.webp',
+                                    'images/topic-cloud.png',
+                                    'images/topic-bases-datos.png',
+                                    'images/topic-devops.png',
+                                    'images/topic-web-dev.png',
+                                ];
+                                $cover_image = $topic_images[$post['id'] % count($topic_images)];
+                            ?>
+                            <article class="post-card slide-up">
+                                <a href="view_post.php?id=<?php echo $post['id']; ?>" class="post-card__cover" aria-hidden="true" tabindex="-1">
+                                    <span class="post-card__monogram"><?php echo htmlspecialchars($monogram); ?></span>
+                                    <img src="<?php echo htmlspecialchars($cover_image); ?>" alt="" class="cover-photo" onerror="this.style.display='none'">
+                                </a>
+                                <div class="post-card__body">
+                                    <h2 class="post-card__title">
+                                        <a href="view_post.php?id=<?php echo $post['id']; ?>"><?php echo htmlspecialchars($post['title']); ?></a>
+                                    </h2>
+                                    <p class="post-card__excerpt"><?php echo nl2br(htmlspecialchars($post['excerpt'])); ?>...</p>
+                                    <div class="post-card__meta">
+                                        <span class="avatar avatar--sm" aria-hidden="true">
+                                            <?php echo htmlspecialchars($authorInitial); ?>
+                                            <img src="images/avatars/<?php echo rawurlencode(strtolower($post['author_username'])); ?>.jpg" alt="" class="avatar__photo" onerror="this.style.display='none'">
+                                        </span>
+                                        <span class="author-line"><strong><?php echo htmlspecialchars($post['author_username']); ?></strong></span>
+                                    </div>
+                                    <div class="post-card__footer">
+                                        <span class="meta-chip">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+                                            <?php echo date('d.m.Y', strtotime($post['created_at'])); ?>
+                                        </span>
+                                        <span class="meta-chip">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                            <?php echo $readMinutes; ?> Min.
+                                        </span>
+                                    </div>
+                                    <a href="view_post.php?id=<?php echo $post['id']; ?>" class="post-card__read-more">
+                                        Weiterlesen
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                                    </a>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-state">
+                        <img src="images/empty-state.png" alt="" class="empty-state__image" onerror="this.style.display='none'">
+                        <p class="no-posts">Noch keine Posts zum Anzeigen vorhanden.</p> <!-- "No hay posts para mostrar todavía." -->
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <span class="footer__brand">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                Mein Blog
+            </span>
+            <span>&copy; <?php echo date('Y'); ?> Mein Blog. Alle Rechte vorbehalten.</span>
+        </div>
+    </footer>
+
+    <script src="script.js" defer></script>
 </body>
 </html>

@@ -96,6 +96,24 @@ try {
     error_log("Fehler beim Abrufen der Kommentare: " . $e->getMessage());
 }
 
+// Rein optische Hilfswerte (keine neuen Datenbankabfragen): Monogramm, Lesezeit, Initialen
+$post_monogram = strtoupper(mb_substr($post['title'], 0, 1));
+$post_word_count = str_word_count(strip_tags($post['content']));
+$post_read_minutes = max(1, (int) ceil($post_word_count / 200));
+$post_author_initial = strtoupper(mb_substr($post['author_username'], 0, 1));
+
+// Themenbild im Wechsel — dieselbe Formel wie in index.php, damit derselbe Post
+// überall dasselbe Bild zeigt (rein visuell, keine neue Datenbankabfrage)
+$topic_images = [
+    'images/topic-ia.png',
+    'images/topic-programacion.png',
+    'images/topic-ciberseguridad.webp',
+    'images/topic-cloud.png',
+    'images/topic-bases-datos.png',
+    'images/topic-devops.png',
+    'images/topic-web-dev.png',
+];
+$cover_image = $topic_images[$post['id'] % count($topic_images)];
 ?>
 <!DOCTYPE html>
 <html lang="de"> <!-- Geändert -->
@@ -103,135 +121,231 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo htmlspecialchars($post['title']); ?> - Mein Blog</title> <!-- Geändert -->
-    <style>
-        /* ... (Stile bleiben weitgehend gleich, ggf. Schriftgrößen anpassen) ... */
-        body { font-family: sans-serif; margin: 0; padding:0; background-color: #f9f9f9; }
-        .navbar { background-color: #333; padding: 10px 20px; color: white; display: flex; justify-content: space-between; align-items: center; }
-        .navbar .nav-brand a, .navbar .nav-auth a { color: white; text-decoration: none; margin-left: 15px; }
-        .navbar .nav-brand a:hover, .navbar .nav-auth a:hover { text-decoration: underline; }
-        .container { padding: 20px; max-width: 800px; margin: 20px auto; background-color: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .post-title { font-size: 2.5em; margin-bottom: 10px; color: #333; }
-        .post-meta { color: #777; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .post-content { line-height: 1.7; color: #444; font-size: 1.1em; }
-        .actions { margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
-        .actions a { margin-right: 15px; text-decoration: none; padding: 8px 12px; border-radius: 4px; }
-        .edit-link { background-color: #ffc107; color: black; }
-        .delete-link-post { background-color: #dc3545; color: white; }
-        .back-link { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; }
-
-        .comments-section { margin-top: 40px; padding-top: 20px; border-top: 2px solid #ccc; }
-        .comments-section h3 { margin-bottom: 20px; }
-        .comment-form textarea { width: calc(100% - 22px); min-height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 10px; resize: vertical; }
-        .comment-form button { background-color: #28a745; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
-        .comment-form button:hover { background-color: #218838; }
-        .comment-list { list-style: none; padding: 0; }
-        .comment-item { border: 1px solid #eee; padding: 15px; margin-bottom: 15px; border-radius: 5px; background-color: #fdfdfd; }
-        .comment-meta { font-size: 0.9em; color: #666; margin-bottom: 5px; }
-        .comment-meta strong { color: #333; }
-        .comment-content { margin-bottom: 10px; }
-        .comment-actions a { font-size: 0.85em; margin-right: 8px; text-decoration: none; }
-        .edit-comment-link { color: #ffc107; }
-        .delete-comment-link { color: #dc3545; }
-        .no-comments { color: #777; }
-        .errors { background-color: #f8d7da; color: #721c24; padding: 10px; border: 1px solid #f5c6cb; border-radius: 4px; margin-bottom: 15px; }
-        .errors ul { margin: 0; padding-left: 20px; }
-        .success-message { background-color: #d4edda; color: #155724; padding: 10px; border: 1px solid #c3e6cb; border-radius: 4px; margin-bottom: 15px; text-align: center;}
-    </style>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%234F46E5'/%3E%3Ctext x='50' y='68' font-size='56' font-family='sans-serif' font-weight='700' fill='white' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="navbar">
-         <div class="nav-brand">
-            <a href="index.php"><strong>Mein Blog</strong></a> <!-- Geändert -->
+    <div class="reading-progress" data-reading-progress aria-hidden="true"></div>
+
+    <header class="navbar">
+        <div class="container navbar__inner">
+            <a href="index.php" class="navbar__brand">
+                <span class="navbar__mark" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                </span>
+                <span>Mein Blog</span>
+            </a>
+
+            <nav class="navbar__nav" data-nav-menu>
+                <a href="index.php" class="navbar__link">Start</a>
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <a href="dashboard.php" class="navbar__link">Meine Posts</a>
+                    <a href="create_post.php" class="btn btn--primary btn--sm">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                        Neuer Artikel
+                    </a>
+                    <div class="navbar__user">
+                        <span class="avatar avatar--sm" aria-hidden="true">
+                            <?php echo htmlspecialchars(strtoupper(mb_substr($_SESSION['username'], 0, 1))); ?>
+                            <img src="images/avatars/<?php echo rawurlencode(strtolower($_SESSION['username'])); ?>.jpg" alt="" class="avatar__photo" onerror="this.style.display='none'">
+                        </span>
+                        <span class="navbar__username"><?php echo htmlspecialchars($_SESSION['username']); ?></span>
+                        <a href="logout.php" class="navbar__icon-link" aria-label="Abmelden" title="Abmelden">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                        </a>
+                    </div>
+                <?php else: ?>
+                    <a href="login.php" class="navbar__link">Anmelden</a>
+                    <a href="register.php" class="btn btn--primary btn--sm">Registrieren</a>
+                <?php endif; ?>
+            </nav>
+
+            <button class="navbar__toggle" data-nav-toggle aria-label="Menü öffnen" aria-expanded="false">
+                <svg class="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+                <svg class="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
         </div>
-        <div class="nav-auth">
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <a href="dashboard.php">Meine Posts</a> <!-- Geändert -->
-                <a href="logout.php">Abmelden (<?php echo htmlspecialchars($_SESSION['username']); ?>)</a> <!-- Geändert -->
-            <?php else: ?>
-                <a href="login.php">Anmelden</a> <!-- Geändert -->
-                <a href="register.php">Registrieren</a> <!-- Geändert -->
-            <?php endif; ?>
-        </div>
-    </div>
+    </header>
 
-    <div class="container">
-        <h1 class="post-title"><?php echo htmlspecialchars($post['title']); ?></h1>
-        <p class="post-meta">
-            Von: <?php echo htmlspecialchars($post['author_username']); ?> | <!-- Geändert -->
-            Veröffentlicht am: <?php echo date('d. F Y \u\m H:i', strtotime($post['created_at'])); ?> Uhr <!-- Geändert, deutsches Datumsformat -->
-            <?php if ($post['created_at'] != $post['updated_at']): ?>
-                | Letzte Aktualisierung: <?php echo date('d. F Y \u\m H:i', strtotime($post['updated_at'])); ?> Uhr <!-- Geändert -->
-            <?php endif; ?>
-        </p>
-        <div class="post-content">
-            <?php echo nl2br(htmlspecialchars($post['content'])); ?>
-        </div>
+    <main>
+        <div class="container container--narrow article-header">
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+                <a href="index.php">Start</a>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                <span class="breadcrumb__current"><?php echo htmlspecialchars($post['title']); ?></span>
+            </nav>
 
-        <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $post['user_id']): ?>
-            <div class="actions">
-                <a href="edit_post.php?id=<?php echo $post['id']; ?>" class="edit-link">Post bearbeiten</a> <!-- Geändert -->
-                <a href="delete_post.php?id=<?php echo $post['id']; ?>" onclick="return confirm('Bist du sicher, dass du diesen Post löschen möchtest?');" class="delete-link-post">Post löschen</a> <!-- Geändert -->
-            </div>
-        <?php endif; ?>
-        <a href="index.php" class="back-link">← Zurück zu allen Posts</a> <!-- Geändert -->
+            <article class="fade-in">
+                <div class="article__cover">
+                    <span class="post-card__monogram"><?php echo htmlspecialchars($post_monogram); ?></span>
+                    <img src="<?php echo htmlspecialchars($cover_image); ?>" alt="" class="cover-photo" onerror="this.style.display='none'">
+                </div>
 
-        <!-- Kommentarbereich -->
-        <div class="comments-section">
-            <h3>Kommentare (<?php echo count($comments); ?>)</h3> <!-- Geändert -->
+                <span class="badge badge--primary" style="margin-bottom:18px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/></svg>
+                    Artikel
+                </span>
 
-            <?php if (isset($_SESSION['success_message'])): ?>
-                <p class="success-message"><?php echo htmlspecialchars(translate_session_message_view($_SESSION['success_message'], $translations_view)); unset($_SESSION['success_message']); ?></p>
-            <?php endif; ?>
-            <?php if (isset($_SESSION['error_message'])): ?>
-                <div class="errors"><ul><li><?php echo htmlspecialchars(translate_session_message_view($_SESSION['error_message'], $translations_view)); unset($_SESSION['error_message']); ?></li></ul></div>
-            <?php endif; ?>
+                <h1 class="article__title"><?php echo htmlspecialchars($post['title']); ?></h1>
 
-            <!-- Formular zum Hinzufügen eines Kommentars -->
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <h4>Einen Kommentar hinzufügen:</h4> <!-- Geändert -->
-                <?php if (!empty($comment_errors)): ?>
-                    <div class="errors">
-                        <ul>
-                            <?php foreach ($comment_errors as $error): ?>
-                                <li><?php echo htmlspecialchars($error); ?></li> <!-- Diese Fehler sind schon auf Deutsch -->
-                            <?php endforeach; ?>
-                        </ul>
+                <div class="article__meta">
+                    <div class="author-line">
+                        <span class="avatar avatar--md" aria-hidden="true">
+                            <?php echo htmlspecialchars($post_author_initial); ?>
+                            <img src="images/avatars/<?php echo rawurlencode(strtolower($post['author_username'])); ?>.jpg" alt="" class="avatar__photo" onerror="this.style.display='none'">
+                        </span>
+                        <span><strong><?php echo htmlspecialchars($post['author_username']); ?></strong></span>
+                    </div>
+                    <span class="article__meta-divider" aria-hidden="true"></span>
+                    <span class="meta-chip">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+                        <?php echo date('d. F Y \u\m H:i', strtotime($post['created_at'])); ?> Uhr <!-- Geändert, deutsches Datumsformat -->
+                    </span>
+                    <span class="article__meta-divider" aria-hidden="true"></span>
+                    <span class="meta-chip">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <?php echo $post_read_minutes; ?> Min. Lesezeit
+                    </span>
+                    <?php if ($post['created_at'] != $post['updated_at']): ?>
+                        <span class="article__meta-divider" aria-hidden="true"></span>
+                        <span class="meta-chip">Aktualisiert: <?php echo date('d. F Y \u\m H:i', strtotime($post['updated_at'])); ?> Uhr</span> <!-- Geändert -->
+                    <?php endif; ?>
+                </div>
+
+                <div class="article__body">
+                    <?php echo nl2br(htmlspecialchars($post['content'])); ?>
+                </div>
+
+                <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $post['user_id']): ?>
+                    <div class="article__actions">
+                        <a href="edit_post.php?id=<?php echo $post['id']; ?>" class="btn btn--secondary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            Post bearbeiten
+                        </a> <!-- Geändert -->
+                        <a href="delete_post.php?id=<?php echo $post['id']; ?>" onclick="return confirm('Bist du sicher, dass du diesen Post löschen möchtest?');" class="btn btn--danger">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                            Post löschen
+                        </a> <!-- Geändert -->
                     </div>
                 <?php endif; ?>
-                <form action="view_post.php?id=<?php echo $post_id; ?>" method="post" class="comment-form">
-                    <input type="hidden" name="add_comment" value="1">
-                    <div>
-                        <textarea name="comment_content" placeholder="Schreibe deinen Kommentar hier..." required><?php echo htmlspecialchars($comment_content); ?></textarea> <!-- Geändert -->
-                    </div>
-                    <button type="submit">Kommentar absenden</button> <!-- Geändert -->
-                </form>
-            <?php else: ?>
-                <p><a href="login.php?redirect_to=<?php echo urlencode("view_post.php?id=".$post_id); ?>">Anmelden</a>, um einen Kommentar zu hinterlassen.</p> <!-- Geändert -->
-            <?php endif; ?>
+                <a href="index.php" class="back-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                    Zurück zu allen Posts
+                </a> <!-- Geändert -->
 
-            <!-- Kommentarliste -->
-            <ul class="comment-list">
-                <?php if (count($comments) > 0): ?>
-                    <?php foreach ($comments as $comment): ?>
-                        <li class="comment-item" id="comment-<?php echo $comment['id']; ?>"> <!-- id hinzugefügt für Anker -->
-                            <p class="comment-meta">
-                                <strong><?php echo htmlspecialchars($comment['commenter_username']); ?></strong>
-                                am <?php echo date('d.m.Y H:i', strtotime($comment['created_at'])); ?> Uhr <!-- Geändert -->
-                            </p>
-                            <p class="comment-content"><?php echo nl2br(htmlspecialchars($comment['content'])); ?></p>
-                            <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $comment['user_id']): ?>
-                                <div class="comment-actions">
-                                    <a href="edit_comment.php?id=<?php echo $comment['id']; ?>&post_id=<?php echo $post_id; ?>" class="edit-comment-link">Bearbeiten</a> <!-- Geändert -->
-                                    <a href="delete_comment.php?id=<?php echo $comment['id']; ?>&post_id=<?php echo $post_id; ?>" onclick="return confirm('Bist du sicher, dass du diesen Kommentar löschen möchtest?');" class="delete-comment-link">Löschen</a> <!-- Geändert -->
+                <!-- Kommentarbereich -->
+                <div class="comments">
+                    <div class="comments__header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                        <h3>Kommentare (<?php echo count($comments); ?>)</h3> <!-- Geändert -->
+                    </div>
+
+                    <?php if (isset($_SESSION['success_message'])): ?>
+                        <div class="alert alert--success">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                            <p><?php echo htmlspecialchars(translate_session_message_view($_SESSION['success_message'], $translations_view)); unset($_SESSION['success_message']); ?></p>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (isset($_SESSION['error_message'])): ?>
+                        <div class="alert alert--error">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                            <p><?php echo htmlspecialchars(translate_session_message_view($_SESSION['error_message'], $translations_view)); unset($_SESSION['error_message']); ?></p>
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Formular zum Hinzufügen eines Kommentars -->
+                    <?php if (isset($_SESSION['user_id'])): ?>
+                        <div class="comment-form">
+                            <h4 style="margin-bottom:14px;">Einen Kommentar hinzufügen:</h4> <!-- Geändert -->
+                            <?php if (!empty($comment_errors)): ?>
+                                <div class="alert alert--error">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>
+                                    <ul>
+                                        <?php foreach ($comment_errors as $error): ?>
+                                            <li><?php echo htmlspecialchars($error); ?></li> <!-- Diese Fehler sind schon auf Deutsch -->
+                                        <?php endforeach; ?>
+                                    </ul>
                                 </div>
                             <?php endif; ?>
-                        </li>
-                    <?php endforeach; ?>
-                <?php else: ?>
-                    <p class="no-comments">Noch keine Kommentare. Sei der Erste!</p> <!-- Geändert -->
-                <?php endif; ?>
-            </ul>
+                            <form action="view_post.php?id=<?php echo $post_id; ?>" method="post">
+                                <input type="hidden" name="add_comment" value="1">
+                                <div class="comment-form__row">
+                                    <span class="avatar avatar--md" aria-hidden="true">
+                                        <?php echo htmlspecialchars(strtoupper(mb_substr($_SESSION['username'], 0, 1))); ?>
+                                        <img src="images/avatars/<?php echo rawurlencode(strtolower($_SESSION['username'])); ?>.jpg" alt="" class="avatar__photo" onerror="this.style.display='none'">
+                                    </span>
+                                    <div class="comment-form__fields">
+                                        <textarea name="comment_content" class="form-control form-control--comment" placeholder="Schreibe deinen Kommentar hier..." required><?php echo htmlspecialchars($comment_content); ?></textarea> <!-- Geändert -->
+                                        <div style="margin-top:12px; text-align:right;">
+                                            <button type="submit" class="btn btn--primary">Kommentar absenden</button> <!-- Geändert -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    <?php else: ?>
+                        <div class="comment-prompt">
+                            <span>Melde dich an, um einen Kommentar zu hinterlassen.</span>
+                            <a href="login.php?redirect_to=<?php echo urlencode("view_post.php?id=".$post_id); ?>" class="btn btn--primary btn--sm">Anmelden</a> <!-- Geändert -->
+                        </div>
+                    <?php endif; ?>
+
+                    <!-- Kommentarliste -->
+                    <ul class="comment-list">
+                        <?php if (count($comments) > 0): ?>
+                            <?php foreach ($comments as $comment): ?>
+                                <?php $commenter_initial = strtoupper(mb_substr($comment['commenter_username'], 0, 1)); ?>
+                                <li class="comment-item" id="comment-<?php echo $comment['id']; ?>"> <!-- id hinzugefügt für Anker -->
+                                    <div class="comment-item__head">
+                                        <span class="avatar avatar--sm" aria-hidden="true">
+                                            <?php echo htmlspecialchars($commenter_initial); ?>
+                                            <img src="images/avatars/<?php echo rawurlencode(strtolower($comment['commenter_username'])); ?>.jpg" alt="" class="avatar__photo" onerror="this.style.display='none'">
+                                        </span>
+                                        <span class="author-line">
+                                            <strong><?php echo htmlspecialchars($comment['commenter_username']); ?></strong>
+                                            &nbsp;·&nbsp;<?php echo date('d.m.Y H:i', strtotime($comment['created_at'])); ?> Uhr <!-- Geändert -->
+                                        </span>
+                                    </div>
+                                    <p class="comment-item__content"><?php echo nl2br(htmlspecialchars($comment['content'])); ?></p>
+                                    <?php if (isset($_SESSION['user_id']) && $_SESSION['user_id'] == $comment['user_id']): ?>
+                                        <div class="comment-item__actions">
+                                            <a href="edit_comment.php?id=<?php echo $comment['id']; ?>&post_id=<?php echo $post_id; ?>">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                                Bearbeiten
+                                            </a> <!-- Geändert -->
+                                            <a href="delete_comment.php?id=<?php echo $comment['id']; ?>&post_id=<?php echo $post_id; ?>" onclick="return confirm('Bist du sicher, dass du diesen Kommentar löschen möchtest?');" class="is-danger">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                                                Löschen
+                                            </a> <!-- Geändert -->
+                                        </div>
+                                    <?php endif; ?>
+                                </li>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                                <p class="no-comments">Noch keine Kommentare. Sei der Erste!</p> <!-- Geändert -->
+                            </div>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+            </article>
         </div>
-    </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <span class="footer__brand">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                Mein Blog
+            </span>
+            <span>&copy; <?php echo date('Y'); ?> Mein Blog. Alle Rechte vorbehalten.</span>
+        </div>
+    </footer>
+
+    <script src="script.js" defer></script>
 </body>
 </html>
