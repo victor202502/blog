@@ -752,6 +752,14 @@ textarea.form-control--comment { min-height: 100px; }
 .form-footer a { color: var(--color-primary); font-weight: 600; }
 .form-footer a:hover { text-decoration: underline; }
 
+.test-login-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-border);
+}
+
 .form-links {
   display: flex;
   justify-content: center;

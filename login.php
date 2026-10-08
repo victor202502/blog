@@ -9,37 +9,49 @@ if (isset($_SESSION['user_id'])) {
 
 $errors = [];
 $username_input = '';
+$test_login_enabled = getenv('APP_ENV') === 'development' && getenv('ENABLE_TEST_LOGIN') === 'true';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username_input = trim($_POST['username']);
-    $password = $_POST['password'];
+    $user = null;
 
-    if (empty($username_input)) {
-        $errors[] = "Der Benutzername ist erforderlich."; // "El nombre de usuario es obligatorio."
-    }
-    if (empty($password)) {
-        $errors[] = "Das Passwort ist erforderlich."; // "La contraseña es obligatoria."
-    }
+    if (isset($_POST['test_login'])) {
+        if (!$test_login_enabled) {
+            $errors[] = "Der Testzugang ist nicht aktiviert.";
+        } elseif (isset($_POST['test_user_id']) && is_string($_POST['test_user_id']) && ctype_digit($_POST['test_user_id'])) {
+            try {
+                $stmt = $pdo->prepare("SELECT id, username FROM users WHERE id = :id");
+                $stmt->execute(['id' => $_POST['test_user_id']]);
+                $user = $stmt->fetch();
 
-    if (empty($errors)) {
+                if (!$user) {
+                    $errors[] = "Der ausgewählte Benutzer wurde nicht gefunden.";
+                }
+            } catch (PDOException $e) {
+                error_log("Fehler beim Test-Login: " . $e->getMessage());
+                $errors[] = "Ein Fehler ist aufgetreten. Bitte versuche es erneut.";
+            }
+        } else {
+            $errors[] = "Bitte wähle einen Benutzer aus.";
+        }
+    } else {
+        $username_input = trim($_POST['username'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        if (empty($username_input)) {
+            $errors[] = "Der Benutzername ist erforderlich."; // "El nombre de usuario es obligatorio."
+        }
+        if (empty($password)) {
+            $errors[] = "Das Passwort ist erforderlich."; // "La contraseña es obligatoria."
+        }
+
+        if (empty($errors)) {
         try {
             $stmt = $pdo->prepare("SELECT id, username, password_hash FROM users WHERE username = :username");
             $stmt->execute(['username' => $username_input]);
-            $user = $stmt->fetch();
+            $candidate = $stmt->fetch();
 
-            if ($user && password_verify($password, $user['password_hash'])) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-
-                // Si venías de una redirección (ej. intentar comentar sin estar logueado)
-                if (isset($_SESSION['redirect_to'])) {
-                    $redirect_url = $_SESSION['redirect_to'];
-                    unset($_SESSION['redirect_to']);
-                    header("Location: " . $redirect_url);
-                } else {
-                    header("Location: dashboard.php");
-                }
-                exit;
+            if ($candidate && password_verify($password, $candidate['password_hash'])) {
+                $user = $candidate;
             } else {
                 $errors[] = "Benutzername oder Passwort falsch."; // "Nombre de usuario o contraseña incorrectos."
             }
@@ -47,6 +59,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             error_log("Fehler beim Login: " . $e->getMessage());
             $errors[] = "Ein Fehler ist aufgetreten. Bitte versuche es erneut."; // "Ocurrió un error. Por favor, inténtalo de nuevo."
         }
+        }
+    }
+
+    if ($user) {
+        session_regenerate_id(true);
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['username'] = $user['username'];
+
+        if (isset($_SESSION['redirect_to'])) {
+            $redirect_url = $_SESSION['redirect_to'];
+            unset($_SESSION['redirect_to']);
+            header("Location: " . $redirect_url);
+        } else {
+            header("Location: dashboard.php");
+        }
+        exit;
+    }
+}
+
+$test_users = [];
+if ($test_login_enabled) {
+    try {
+        $stmt = $pdo->query("SELECT id, username FROM users ORDER BY username");
+        $test_users = $stmt->fetchAll();
+    } catch (PDOException $e) {
+        error_log("Fehler beim Laden der Testbenutzer: " . $e->getMessage());
     }
 }
 ?>
@@ -140,6 +178,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         <p>Noch kein Konto? <a href="register.php">Hier registrieren</a></p> <!-- "¿No tienes una cuenta? Regístrate aquí" -->
                     </div>
                 </form>
+
+                <?php if ($test_login_enabled && !empty($test_users)): ?>
+                    <form action="login.php<?php echo isset($_GET['redirect_to']) ? '?redirect_to=' . urlencode($_GET['redirect_to']) : ''; ?>" method="post" class="test-login-form">
+                        <label for="test_user_id" class="form-label">Als Testbenutzer anmelden:</label>
+                        <select id="test_user_id" name="test_user_id" class="form-control" required>
+                            <?php foreach ($test_users as $test_user): ?>
+                                <option value="<?php echo htmlspecialchars((string) $test_user['id']); ?>"><?php echo htmlspecialchars($test_user['username']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" name="test_login" value="1" class="btn btn--secondary btn--block">Als Testbenutzer anmelden</button>
+                    </form>
+                <?php endif; ?>
             </div>
         </div>
     </main>
