@@ -1,9 +1,9 @@
 <?php
-$host = getenv('DB_HOST') ?: '127.0.0.1';
-$db_name = getenv('DB_NAME') ?: 'blog';
-$user = getenv('DB_USER') ?: 'blog';
-$pass = getenv('DB_PASS') ?: 'blog_local_password';
-$port = getenv('DB_PORT') ?: '5432';
+$host = '127.0.0.1';
+$db_name = 'blog';
+$user = 'blog';
+$pass = 'blog_local_password';
+$port = '5432';
 
 $dsn = "pgsql:host={$host};port={$port};dbname={$db_name}";
 
